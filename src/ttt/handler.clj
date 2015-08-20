@@ -74,15 +74,13 @@
 
   (defn get-state [current-state field1 field2]
     "given the current state and a board determines state transition"
-    (if (win? field1)
-      :first-player-wins
-      (if (win? field2)
-        :second-player-wins
-        (if (tie? field1 field2)
-          :tie
-          (if (= current-state "first-player-turn")
-            :second-player-turn
-            :first-player-turn)))))
+    (cond
+      (win? field1) :first-player-wins
+      (win? field2) :second-player-wins
+      (tie? field1 field2) :tie
+      (= current-state "first-player-turn") :second-player-turn
+      (= current-state "second-player-turn") :first-player-turn
+      :else (fail :invalid-state)))
 
   (defn add-and-check [position game]
     "makes a move if the target cell is not occupied"

@@ -10,7 +10,7 @@
 
 (cheshire.generate/add-encoder org.bson.types.ObjectId cheshire.generate/encode-str)
 
-(def empty-field [0,0,0,0,0,0,0,0,0])
+(def empty-field 0)
 
 (defn generate
   "generates a unique token for the game"
@@ -22,6 +22,7 @@
   [error]
   (case error
     :wrong-turn (generate-string {:error "wrong turn"})
+    :occupied-cell (generate-string {:error "the cell is already occupied"})
     :invalid-state (generate-string {:error "invalid state"})
     :not-found (generate-string {:error "resource not found"})
     (generate-string {:error "unknown error"})))
@@ -42,7 +43,7 @@
     (let [{type "type" password "password"} body]
       (case type
         0 (generate-string
-                  (mc/insert-and-return db coll {:token (generate) :type type :field empty-field :state :first-player-turn}))
+            (mc/insert-and-return db coll {:token (generate) :type type :field1 empty-field :field2 empty-field :state :first-player-turn}))
         1 "shared key"
         "asd Bad request")))
 
@@ -50,24 +51,69 @@
     "Returns a status of a game by id"
     [id]
     (generate-string
-        (mc/find-one db coll {:token id} [:token :state :field]) false))
+        (mc/find-one db coll {:token id} [:token :state :field1 :field2]) false))
+
+  (defn win? [field]
+    (cond
+      (= (bit-and field 7) 7) true
+      (= (bit-and field 56) 56) true
+      (= (bit-and field 448) 448) true
+      (= (bit-and field 292) 292) true
+      (= (bit-and field 146) 146) true
+      (= (bit-and field 73) 73) true
+      (= (bit-and field 273) 273) true
+      (= (bit-and field 84) 84) true
+      :else false))
+
+  (defn tie? [field1 field2]
+    (= (bit-or field1 field2) 511))
+
+  (defn get-state [current-state field1 field2]
+    (if (win? field1)
+      :first-player-wins
+      (if (win? field2)
+        :second-player-wins
+        (if (tie? field1 field2)
+          :tie
+          (if (= current-state "first-player-turn")
+            :second-player-turn
+            :first-player-turn)))))
+
+  (defn add-and-check [position game]
+    (let [field1 (get game :field1)
+          field2 (get game :field2)
+          state (get game :state)
+          pos-mask (bit-shift-left 1 position)]
+      (cond
+        (= (bit-and (bit-or field1 field2) pos-mask) 0)
+        (case state
+          "first-player-turn" (generate-string
+                                (mc/save-and-return db coll
+                                  (assoc game
+                                    :state (get-state state (bit-or field1 pos-mask) field2)
+                                    :field1 (bit-or field1 pos-mask))))
+          "second-player-turn" (generate-string
+                                 (mc/save-and-return db coll
+                                   (assoc game
+                                     :state (get-state state field1 (bit-or field2 pos-mask))
+                                     :field2 (bit-or field2 pos-mask)))))
+          :else (fail :occupied-cell))))
 
   (defn make-turn
     "Make a turn"
     [id, body]
     (let [game (mc/find-one-as-map db coll {:token id})
-          {state :state field :field token :token} game
+          {state :state field1 :field1 field2 :field2 token :token} game
           {player "player" position "position"} body]
-      (prn player)
       (case state
         "first-player-turn" (cond
-                               (= player 1) (generate-string (mc/save-and-return db coll (assoc game :state :second-player-turn)))
+                               (= player 1) (add-and-check position game)
                                :else (fail :wrong-turn))
         "second-player-turn" (cond
-                               (= player 2) (generate-string (mc/save-and-return db coll (assoc game :state :first-player-turn)))
+                               (= player 2) (add-and-check position game)
                                :else (fail :wrong-turn))
-        "first-player-won" (generate-string game)
-        "second-player-won" (generate-string game)
+        "first-player-wins" (generate-string game)
+        "second-player-wins" (generate-string game)
         "tie" (generate-string game)
         (fail :invalid-state)))))
 

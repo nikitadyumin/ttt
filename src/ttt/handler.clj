@@ -25,6 +25,8 @@
     :occupied-cell (generate-string {:error "the cell is already occupied"})
     :invalid-state (generate-string {:error "invalid state"})
     :not-found (generate-string {:error "resource not found"})
+    :not-implemented (generate-string {:error "not implemented"})
+    :bad-request (generate-string {:error "bad request"})
     (generate-string {:error "unknown error"})))
 
 (let [conn (mg/connect)
@@ -44,8 +46,8 @@
       (case type
         0 (generate-string
             (mc/insert-and-return db coll {:token (generate) :type type :field1 empty-field :field2 empty-field :state :first-player-turn}))
-        1 "shared key"
-        "asd Bad request")))
+        1 (fail :not-implemented)
+        (fail :bad-request))))
 
   (defn get-game
     "Returns a status of a game by id"
@@ -54,6 +56,7 @@
         (mc/find-one db coll {:token id} [:token :state :field1 :field2]) false))
 
   (defn win? [field]
+    "determins if the field has a winning situation"
     (cond
       (= (bit-and field 7) 7) true
       (= (bit-and field 56) 56) true
@@ -66,9 +69,11 @@
       :else false))
 
   (defn tie? [field1 field2]
+    "checks if the board is full"
     (= (bit-or field1 field2) 511))
 
   (defn get-state [current-state field1 field2]
+    "given the current state and a board determines state transition"
     (if (win? field1)
       :first-player-wins
       (if (win? field2)
@@ -80,6 +85,7 @@
             :first-player-turn)))))
 
   (defn add-and-check [position game]
+    "makes a move if the target cell is not occupied"
     (let [field1 (get game :field1)
           field2 (get game :field2)
           state (get game :state)
@@ -100,7 +106,7 @@
           :else (fail :occupied-cell))))
 
   (defn make-turn
-    "Make a turn"
+    "Make a move"
     [id, body]
     (let [game (mc/find-one-as-map db coll {:token id})
           {state :state field1 :field1 field2 :field2 token :token} game
@@ -127,7 +133,7 @@
 
   (GET "/" [] (response/file-response "index.html" {:root "resources/public"}))
   (route/resources "/")
-  (route/not-found (fail :not-found)))
+  (route/not-found (fail :bad-request)))
 
 (def app
   (-> (handler/api app-routes)

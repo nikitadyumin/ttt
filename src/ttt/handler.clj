@@ -10,23 +10,25 @@
 
 (cheshire.generate/add-encoder org.bson.types.ObjectId cheshire.generate/encode-str)
 
-(def empty-field 0)
-
 (defn generate
   "generates a unique token for the game"
   []
-  (str (System/currentTimeMillis)))
+  (let [acc [(str (System/currentTimeMillis))]]
+    (loop [x 10 acc acc]
+      (if (= x 0)
+        (clojure.string/join "" acc)
+        (recur (- x 2) (cons (str (rand-int 10000)) acc))))))
 
 (defn fail
   "returns a serialized json with error description"
   [error]
   (case error
-    :wrong-turn (generate-string {:error "wrong turn"})
-    :occupied-cell (generate-string {:error "the cell is already occupied"})
-    :invalid-state (generate-string {:error "invalid state"})
-    :not-found (generate-string {:error "resource not found"})
-    :not-implemented (generate-string {:error "not implemented"})
-    :bad-request (generate-string {:error "bad request"})
+    :wrong-turn {:status 400 :body (generate-string {:error "wrong turn"})}
+    :occupied-cell {:status 400 :body (generate-string {:error "the cell is already occupied"})}
+    :invalid-state {:status 400 :body (generate-string {:error "invalid state"})}
+    :not-found {:status 404 :body (generate-string {:error "resource not found"})}
+    :not-implemented {:status 501 :body (generate-string {:error "not implemented"})}
+    :bad-request  {:status 400 :body (generate-string {:error "bad request"})}
     (generate-string {:error "unknown error"})))
 
 (let [conn (mg/connect)
@@ -42,10 +44,17 @@
   (defn new-game
     "Creates a new game"
     [body]
-    (let [{type "type" password "password"} body]
+    (let [empty-field 0
+          {type "type" password "password"} body]
       (case type
-        0 (generate-string
-            (mc/insert-and-return db coll {:token (generate) :type type :field1 empty-field :field2 empty-field :state :first-player-turn}))
+        0 {:status 201
+           :body (generate-string
+                   (mc/insert-and-return db coll {
+                                                   :token (generate)
+                                                   :type type
+                                                   :field1 empty-field
+                                                   :field2 empty-field
+                                                   :state :first-player-turn}))}
         1 (fail :not-implemented)
         (fail :bad-request))))
 
@@ -56,7 +65,7 @@
         (mc/find-one db coll {:token id} [:token :state :field1 :field2]) false))
 
   (defn win? [field]
-    "determins if the field has a winning situation"
+    "determines if the field has a winning situation"
     (cond
       (= (bit-and field 7) 7) true
       (= (bit-and field 56) 56) true

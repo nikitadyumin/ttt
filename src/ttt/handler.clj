@@ -141,7 +141,7 @@
 
   (GET "/" [] (response/file-response "index.html" {:root "resources/public"}))
   (route/resources "/")
-  (route/not-found (fail :bad-request)))
+  (route/not-found (fail :not-found)))
 
 (def app
   (-> (handler/api app-routes)

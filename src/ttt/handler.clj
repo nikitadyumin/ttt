@@ -31,9 +31,10 @@
     :bad-request  {:status 400 :body (generate-string {:error "bad request"})}
     (generate-string {:error "unknown error"})))
 
-(let [conn (mg/connect)
-      db   (mg/get-db conn "ttt")
-      coll "games"]
+(let [
+       uri (System/getenv "MONGOLAB_URI")
+       {:keys [conn db]} (mg/connect-via-uri uri)
+       coll "games"]
 
   (defn get-all-games
     "Returns a list of games available on the server"

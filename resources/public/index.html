@@ -16,6 +16,9 @@
                     <td>
                         Action
                     </td>
+                    <td>
+                        Details
+                    </td>
                 </tr>
             </thead>
             <tbody>
@@ -23,21 +26,97 @@
                     <td>GET</td>
                     <td>games/</td>
                     <td>get the list of games on the server</td>
+                    <td>
+                        Response body:
+                        <pre>
+[
+    {
+        "_id":"561f3f796ffb732b5c9835f2",
+        "token":"46197528478235466981444888441595",
+        "type":0,
+        "field1":1,
+        "field2":0,
+        "state":"second-player-turn"
+    },
+    {
+        "_id":"561f43306ffb732b5c9835f4",
+        "state":"first-player-turn",
+        "field2":0,
+        "field1":0,
+        "type":0,
+        "token":"979483055887313553541444889392350"
+    }
+]
+                        </pre>
+                    </td>
                 </tr>
                 <tr>
                     <td>POST</td>
                     <td>games/</td>
                     <td>create a new game</td>
+                    <td>
+                        Request body:
+                        <pre>
+{
+    "type": 0,
+    "password": "abc"
+}
+                        </pre>
+                        Response body:
+                        <pre>
+{
+    "state":"first-player-turn",
+    "field2":0,
+    "field1":0,
+    "type":0,
+    "token":"46197528478235466981444888441595",
+    "_id":"561f3f796ffb732b5c9835f2"
+}
+                        </pre>
+                    </td>
                 </tr>
                 <tr>
                     <td>GET</td>
                     <td>games/:id</td>
                     <td>get game status</td>
+                    <td>
+                        Response body:
+                        <pre>
+{
+    "state":"first-player-turn",
+    "field2":0,
+    "field1":0,
+    "type":0,
+    "token":"46197528478235466981444888441595",
+    "_id":"561f3f796ffb732b5c9835f2"
+}
+                        </pre>
+                    </td>
                 </tr>
                 <tr>
                     <td>PUT</td>
                     <td>games/:id</td>
                     <td>make a turn</td>
+                    <td>
+                        Request body:
+                        <pre>
+{
+    "player": 1,
+    "position": 0
+}
+                        </pre>
+                        Response body:
+                        <pre>
+{
+    "token":"46197528478235466981444888441595",
+    "type":0,
+    "field1":1,
+    "field2":0,
+    "state":"second-player-turn",
+    "_id":"561f3f796ffb732b5c9835f2"
+}
+                        </pre>
+                    </td>
                 </tr>
             </tbody>
         </table>

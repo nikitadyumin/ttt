@@ -5,6 +5,7 @@
             [monger.core :as mg]
             [monger.collection :as mc]
             [cheshire.core :refer [generate-string, parse-string]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.util.response :as response]
             [ring.middleware.json :as middleware]))
 
@@ -145,5 +146,7 @@
 
 (def app
   (-> (handler/api app-routes)
+    (wrap-cors :access-control-allow-origin [#".*"]
+      :access-control-allow-methods [:get :put :post :delete])
     (middleware/wrap-json-body)
     (middleware/wrap-json-response)))

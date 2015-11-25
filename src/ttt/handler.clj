@@ -37,12 +37,6 @@
        {:keys [conn db]} (mg/connect-via-uri uri)
        coll "games"]
 
-  (defn get-all-games
-    "Returns a list of games available on the server"
-    []
-    (generate-string
-      (mc/find-maps db coll)))
-
   (defn new-game
     "Creates a new game"
     [body]
@@ -54,6 +48,7 @@
                    (mc/insert-and-return db coll {
                                                    :token (generate)
                                                    :type type
+                                                   :group (str password)
                                                    :field1 empty-field
                                                    :field2 empty-field
                                                    :state :first-player-turn}))}
@@ -64,7 +59,13 @@
     "Returns a status of a game by id"
     [id]
     (generate-string
-        (mc/find-one db coll {:token id} [:token :state :field1 :field2]) false))
+        (mc/find-one db coll {:token id} [:token :group :state :field1 :field2]) false))
+
+  (defn get-game-by-group
+    "filter games by group"
+    [group]
+    (generate-string
+      (mc/find-maps db coll {:group group} [:token :group :state :field1 :field2]) false))
 
   (defn win? [field]
     "determines if the field has a winning situation"
@@ -134,7 +135,7 @@
 
 (defroutes app-routes
   (context "/games" [] (defroutes games-routes
-     (GET "/" [] (get-all-games))
+     (GET "/" {{group :group} :params} (get-game-by-group group))
      (POST "/" {body :body} (new-game body))
      (context "/:id" [id] (defroutes game-routes
         (GET "/" [] (get-game id))

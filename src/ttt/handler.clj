@@ -25,6 +25,7 @@
   [error]
   (case error
     :wrong-turn {:status 400 :body (generate-string {:error "wrong turn"})}
+    :wrong-position {:status 400 :body (generate-string {:error "no such cell"})}
     :occupied-cell {:status 400 :body (generate-string {:error "the cell is already occupied"})}
     :invalid-state {:status 400 :body (generate-string {:error "invalid state"})}
     :not-found {:status 404 :body (generate-string {:error "resource not found"})}
@@ -121,17 +122,20 @@
     (let [game (mc/find-one-as-map db coll {:token id})
           {state :state field1 :field1 field2 :field2 token :token} game
           {player "player" position "position"} body]
-      (case state
-        "first-player-turn" (cond
-                               (= player 1) (add-and-check position game)
-                               :else (fail :wrong-turn))
-        "second-player-turn" (cond
-                               (= player 2) (add-and-check position game)
-                               :else (fail :wrong-turn))
-        "first-player-wins" (generate-string game)
-        "second-player-wins" (generate-string game)
-        "tie" (generate-string game)
-        (fail :invalid-state)))))
+      (cond
+        (> 9 position)
+        (case state
+          "first-player-turn" (cond
+                                (= player 1) (add-and-check position game)
+                                :else (fail :wrong-turn))
+          "second-player-turn" (cond
+                                 (= player 2) (add-and-check position game)
+                                 :else (fail :wrong-turn))
+          "first-player-wins" (generate-string game)
+          "second-player-wins" (generate-string game)
+          "tie" (generate-string game)
+          (fail :invalid-state))
+        :else (fail :wrong-position)))))
 
 (defroutes app-routes
   (context "/games" [] (defroutes games-routes
